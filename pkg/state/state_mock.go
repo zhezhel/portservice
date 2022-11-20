@@ -1,20 +1,26 @@
 package state
 
-func NewStateManagerMock(data map[string]int64) *StateManagerMock {
-	return &StateManagerMock{}
+import "context"
+
+func NewManagerMock(data map[string]int64) *ManagerMock {
+	return &ManagerMock{
+		Data:        data,
+		ReturnError: nil,
+		NewData:     make(map[string]int64),
+	}
 }
 
-type StateManagerMock struct {
-	Data         map[string]int64
-	Return_error error
-	NewData      map[string]int64
+type ManagerMock struct {
+	Data        map[string]int64
+	ReturnError error
+	NewData     map[string]int64
 }
 
-func (m *StateManagerMock) GetOffset(filename string) (int64, error) {
-	return m.Data[filename], m.Return_error
+func (m *ManagerMock) GetOffset(_ context.Context, filename string) (int64, error) {
+	return m.Data[filename], m.ReturnError
 }
 
-func (m *StateManagerMock) SetOffset(offset int64, filename string) error {
+func (m *ManagerMock) SetOffset(_ context.Context, offset int64, filename string) error {
 	m.NewData[filename] = offset
 	return nil
 }

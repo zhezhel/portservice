@@ -6,6 +6,7 @@ import (
 )
 
 var ErrPortNotFound = errors.New("port not found")
+var ErrNoMorePortElements = errors.New("no more port elements to read")
 
 type Port struct {
 	ID          string    `json:"-"`
@@ -15,11 +16,12 @@ type Port struct {
 	Country     string    `json:"country"`
 	Alias       []string  `json:"alias"`
 	Regions     []string  `json:"regions"`
+	Province    string    `json:"province"`
 	Timezone    string    `json:"timezone"`
 	Unlocs      []string  `json:"unlocs"`
+	Code        string    `json:"code"`
 }
 
 type PortStore interface {
-	GetByID(ctx context.Context, portID string) (Port, error)
 	BulkInsert(ctx context.Context, ports map[string]Port) error
 }

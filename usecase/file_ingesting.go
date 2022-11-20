@@ -1,11 +1,9 @@
 package usecase
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"io"
-	"strings"
 
 	"portservice/core"
 	"portservice/pkg/decoder"
@@ -20,25 +18,18 @@ func NewFileIngestor(portStore core.PortStore, stateManager stateManager, object
 }
 
 type FileIngestor struct {
-	objectsCountLimit int
 	portStore         core.PortStore
 	state             stateManager
+	objectsCountLimit int
 }
 
 func (f *FileIngestor) Start(ctx context.Context, file File) error {
-	offset, err := f.state.GetOffset(file.Name())
+	offset, err := f.state.GetOffset(ctx, file.Name())
 	if err != nil {
 		return err
 	}
 
-	_, err = file.Seek(offset+1, io.SeekStart)
-	if err != nil {
-		return err
-	}
-
-	r := bufio.NewReader(io.MultiReader(strings.NewReader("{"), file))
-
-	dec, err := decoder.NewJSON(r)
+	dec, err := decoder.NewJSON(file, offset)
 	if err != nil {
 		return err
 	}
@@ -48,15 +39,14 @@ func (f *FileIngestor) Start(ctx context.Context, file File) error {
 
 		for i := 0; i < f.objectsCountLimit; i++ {
 			value, err := dec.ReadOne()
-			if errors.Is(err, core.ErrPortNotFound) {
+			if errors.Is(err, core.ErrNoMorePortElements) {
 				break
 			}
-
 			if err != nil {
-				break
+				return err
 			}
 
-			ports[value.ID] = *value
+			ports[value.ID] = value
 		}
 
 		if len(ports) == 0 {
@@ -67,12 +57,17 @@ func (f *FileIngestor) Start(ctx context.Context, file File) error {
 		if err != nil {
 			return err
 		}
+
+		err = f.state.SetOffset(ctx, dec.InputOffset(), file.Name())
+		if err != nil {
+			return err
+		}
 	}
 }
 
 type stateManager interface {
-	GetOffset(filename string) (int64, error)
-	SetOffset(offset int64, filename string) error
+	GetOffset(ctx context.Context, filename string) (int64, error)
+	SetOffset(ctx context.Context, offset int64, filename string) error
 }
 
 type File interface {

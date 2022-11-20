@@ -13,7 +13,6 @@ import (
 var migrations embed.FS
 
 func RunMigrations(ctx context.Context, conn *pgx.Conn) error {
-
 	return dbump.Run(ctx, dbump.Config{
 		Migrator: dbump_pgx.NewMigrator(conn, dbump_pgx.Config{}),
 		Loader:   dbump.NewFileSysLoader(migrations, "migrations"),

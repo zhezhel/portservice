@@ -22,10 +22,6 @@ type Ports struct {
 	conn *pgx.Conn
 }
 
-func (p *Ports) GetByID(ctx context.Context, portID string) (core.Port, error) {
-	return core.Port{}, core.ErrPortNotFound
-}
-
 func (p *Ports) BulkInsert(ctx context.Context, ports map[string]core.Port) error {
 	return p.conn.BeginFunc(ctx, func(tx pgx.Tx) error {
 		query, args := generateBulkInsertSQL(ports)
@@ -34,22 +30,20 @@ func (p *Ports) BulkInsert(ctx context.Context, ports map[string]core.Port) erro
 	})
 }
 
-func generateBulkInsertSQL(ports map[string]core.Port) (string, []any) {
-	q := "INSERT INTO portservice.ports VALUES "
-	args := []any{}
+func generateBulkInsertSQL(ports map[string]core.Port) (query string, args []any) {
+	query = "INSERT INTO portservice.ports VALUES "
 	counter := 0
-	for id, port := range ports {
-		// data, _ := json.Marshal(port)
-		args = append(args, id, port)
+	for id := range ports {
+		args = append(args, id, ports[id])
 
-		q += fmt.Sprintf("($%d, $%d),", 2*counter+1, 2*counter+2)
+		query += fmt.Sprintf("($%d, $%d),", 2*counter+1, 2*counter+2)
 
 		counter++
 	}
 
-	q = strings.TrimRight(q, ",")
+	query = strings.TrimRight(query, ",")
 
-	q += "ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data"
+	query += " ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data"
 
-	return q, args
+	return query, args
 }

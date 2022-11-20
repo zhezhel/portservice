@@ -2,8 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
 	"github.com/jackc/pgx/v4"
 
@@ -13,44 +17,65 @@ import (
 )
 
 func main() {
-
-	ctx := context.Background()
-
-	// context sigterm, sighup
-
-	filepath := os.Getenv("FILE_SOURCE")
-	file, err := os.Open(filepath)
+	log.Printf("Start: port service")
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	config, err := LoadConfig()
 	if err != nil {
-		log.Fatalf("Unable to open file %q: %v\n", filepath, err)
+		log.Println(err)
+		os.Exit(1)
+	}
+	err = run(ctx, config)
+	if err != nil && !errors.Is(err, context.Canceled) {
+		log.Println(err)
+		os.Exit(1)
+	}
+	log.Printf("Shutdown: port service")
+}
+
+func run(ctx context.Context, config Config) error {
+	file, err := os.Open(config.FileSource)
+	if err != nil {
+		log.Printf("Unable to open file %q: %v\n", config.FileSource, err)
+		return err
 	}
 	defer file.Close()
 
-	connStr := os.Getenv("PG_DSN")
-	conn, err := pgx.Connect(ctx, connStr)
+	conn, err := pgx.Connect(ctx, config.PostgresDSN)
 	if err != nil {
-		log.Fatalf("Unable to connect to database: %v\n", err)
+		log.Printf("Unable to connect to database: %v\n", err)
+		return err
 	}
 	defer conn.Close(ctx)
 
 	if err := store.RunMigrations(ctx, conn); err != nil {
-		log.Fatalln(err)
+		return err
 	}
 
 	portStore, err := store.NewPorts(conn)
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
 
-	stateManager, err := state.NewStateManager(conn)
+	stateManager, err := state.NewManager(conn)
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
 
-	fileIngestor, err := usecase.NewFileIngestor(portStore, stateManager, 20)
+	fileIngestor, err := usecase.NewFileIngestor(
+		portStore, stateManager, config.ObjectsCountLimit,
+	)
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
 
-	err = fileIngestor.Start(ctx, file)
-	log.Print(err)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		err = fileIngestor.Start(ctx, file)
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	return err
 }

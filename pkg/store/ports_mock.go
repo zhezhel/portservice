@@ -8,8 +8,8 @@ import (
 
 var _ core.PortStore = (*PortsMock)(nil)
 
-func NewPortsMock(returnError error) *PortsMock {
-	return &PortsMock{ReturnError: returnError}
+func NewPortsMock() *PortsMock {
+	return &PortsMock{}
 }
 
 type PortsMock struct {
@@ -17,11 +17,7 @@ type PortsMock struct {
 	NewData     map[string]core.Port
 }
 
-func (p *PortsMock) GetByID(ctx context.Context, portID string) (core.Port, error) {
-	return core.Port{}, nil
-}
-
-func (p *PortsMock) BulkInsert(ctx context.Context, ports map[string]core.Port) error {
+func (p *PortsMock) BulkInsert(_ context.Context, ports map[string]core.Port) error {
 	p.NewData = ports
 	return p.ReturnError
 }

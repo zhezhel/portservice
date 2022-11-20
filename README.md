@@ -1,6 +1,8 @@
 # Port Service
 
-The current main purpose of this service is to import bulk data into the database.
+The current main purpose of this service is bulk import data from json file into the database.  
+To understand how service currently works, please, check tests in file `usecase/file_ingesting_test.go`.  
+Example of data for import is located in file `data/ports.json`.
 
 ## DEVELOPMENT
 
@@ -9,7 +11,7 @@ The current main purpose of this service is to import bulk data into the databas
 1. Pre-requirements: you should have installed `docker compose` and `git`
 2. Clone the repository by executing the next command: `git clone git@github.com:zhezhel/portservice.git`
 3. Change directory to portservice: `cd portservice`
-4. Run `docker compose up  --build` to start service
+4. Run `docker compose up --build` to start service
 
 ### HOW TO RUN (locally)
 
@@ -23,3 +25,8 @@ The current main purpose of this service is to import bulk data into the databas
     Example for *nix-like OS: `export FILE_SOURCE='/Users/Andrii_Zhezhel/Projects/portservice/data/ports.json'`  
     Recommended to use absolute path to avoid issues related to execution of binary from different folders.  
 7. Run `./portservice` to start service
+
+### HOW TO RUN TESTS
+
+1. Go to project directory
+2. Run `go test -shuffle=on -race  ./...`

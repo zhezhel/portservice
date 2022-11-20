@@ -1,3 +1,5 @@
+# As it is docker-compose for development secrets can be here
+
 version: "3"
 services:
   port-service:
@@ -6,13 +8,20 @@ services:
     container_name: port-service
     hostname: port-service
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     volumes:
       - ./data/:/data/
     environment:
       - FILE_SOURCE=/data/ports.json
+      - OBJECTS_COUNT_LIMIT=100
       - PG_DSN=postgres://admin:admin123@postgres:5432/postgres?sslmode=disable
     deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
       resources:
         limits:
           memory: 200M
@@ -30,3 +39,8 @@ services:
     volumes:
       - /var/lib/postgresql/data
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h postgres -U admin -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
